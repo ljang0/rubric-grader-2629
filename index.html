@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Rubric Grader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a grading workbench. Trajectory list | step viewer | rubric checklist; stacks on phones. */
+:root {
+  --bg: #f3f4f1; --panel: #ffffff; --ink: #1d2320; --muted: #5d6762; --line: #d9ddd8;
+  --accent: #2f6f5e; --accent-ink: #ffffff; --pass: #2d7a3e; --fail: #b3412f; --warn: #a06a12;
+  --code-bg: #eef0ec;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141816; --panel: #1c211f; --ink: #e6ebe7; --muted: #9aa59f; --line: #2e3532;
+  --accent: #6cc3a7; --accent-ink: #0f1513; --pass: #6cc58a; --fail: #ef8a76; --warn: #e2b25b; --code-bg: #232a27; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141816; --panel: #1c211f; --ink: #e6ebe7; --muted: #9aa59f; --line: #2e3532;
+  --accent: #6cc3a7; --accent-ink: #0f1513; --pass: #6cc58a; --fail: #ef8a76; --warn: #e2b25b; --code-bg: #232a27; color-scheme: dark }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px; }
+h1 { font-size: 17px; font-weight: 600; margin: 0; text-wrap: balance; }
+h2 { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); }
+.who input { width: 9ch; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); font-family: var(--font-mono); }
+.progress { font-family: var(--font-mono); color: var(--muted); }
+.banner { padding: 8px 12px; border: 1px solid var(--warn); color: var(--warn); border-radius: 4px; margin-bottom: 12px; }
+
+.work { display: grid; grid-template-columns: 180px minmax(0, 1fr) 360px; gap: 12px; align-items: start; }
+@media (max-width: 1100px) { .work { grid-template-columns: 150px minmax(0, 1fr); } .rubric { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .work { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-width: 0; }
+
+.trajlist { display: flex; flex-direction: column; gap: 4px; max-height: 80vh; overflow: auto; }
+@media (max-width: 700px) { .trajlist { flex-direction: row; flex-wrap: wrap; max-height: none; } }
+.trajlist button { display: flex; justify-content: space-between; gap: 8px; align-items: center; text-align: left; padding: 6px 8px;
+  border: 1px solid transparent; border-radius: 4px; background: none; color: var(--ink); font-family: var(--font-mono); }
+.trajlist button[aria-current="true"] { border-color: var(--accent); background: var(--code-bg); }
+.pill { font-size: 11px; padding: 0 6px; border-radius: 9px; border: 1px solid var(--line); color: var(--muted); }
+.pill.done { border-color: var(--pass); color: var(--pass); }
+.pill.part { border-color: var(--warn); color: var(--warn); }
+
+.task { white-space: pre-wrap; margin: 0 0 12px; }
+.viewer img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--code-bg); }
+.stepbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.stepbar input[type=range] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent); }
+.btn { padding: 4px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.action { background: var(--code-bg); border-radius: 4px; padding: 8px 10px; font-family: var(--font-mono); font-size: 12.5px; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; margin: 0 0 8px; }
+.resp { white-space: pre-wrap; word-break: break-word; color: var(--ink); max-height: 220px; overflow: auto; margin: 0; }
+.label { font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+
+.rubric ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.item { border: 1px solid var(--line); border-radius: 4px; padding: 10px; }
+.item[data-v="pass"] { border-left: 4px solid var(--pass); }
+.item[data-v="fail"] { border-left: 4px solid var(--fail); }
+.crit { margin: 0 0 8px; }
+.choices { display: flex; gap: 6px; flex-wrap: wrap; }
+.choices button { padding: 3px 12px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.choices button.on.pass { background: var(--pass); border-color: var(--pass); color: var(--panel); }
+.choices button.on.fail { background: var(--fail); border-color: var(--fail); color: var(--panel); }
+.item textarea { width: 100%; margin-top: 6px; min-height: 2.4em; resize: vertical; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); font: inherit; padding: 4px 6px; }
+.finish { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); }
+.help { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head><body>
+
+<div class="top">
+  <h1>Rubric grader</h1>
+  <div class="who">
+    <label for="annot">Your annotator code</label>
+    <input id="annot" maxlength="8" placeholder="e.g. A">
+    <span class="progress" id="progress">loading…</span>
+  </div>
+</div>
+<div class="banner" id="banner" hidden></div>
+
+<div class="work">
+  <nav class="panel" aria-label="Trajectories">
+    <h2>Trajectories</h2>
+    <div class="trajlist" id="trajlist"></div>
+  </nav>
+
+  <main class="panel viewer" id="viewer">
+    <h2>Task</h2>
+    <p class="task" id="task">Loading trajectories…</p>
+    <h2 id="stephdr">Step</h2>
+    <img id="shot" alt="Screenshot after this step" hidden>
+    <div class="stepbar">
+      <button class="btn" id="prev" aria-label="Previous step">← Prev</button>
+      <input type="range" id="slider" min="1" max="1" value="1" aria-label="Step">
+      <button class="btn" id="next" aria-label="Next step">Next →</button>
+      <span class="mono" id="stepno"></span>
+    </div>
+    <div class="label">Action</div>
+    <pre class="action" id="action"></pre>
+    <div class="label">Agent text</div>
+    <p class="resp" id="resp"></p>
+    <div class="label">Final answer</div>
+    <p class="resp" id="final"></p>
+  </main>
+
+  <section class="panel rubric" aria-label="Rubric">
+    <h2>Rubric</h2>
+    <p class="help">Grade only the criterion shown, from the screenshots and actions. Don't infer state you can't see. A claimed action with no evidence fails. If a later step undoes it, it fails. <kbd>←</kbd> <kbd>→</kbd> step, <kbd>P</kbd>/<kbd>F</kbd> grade the selected item.</p>
+    <ol id="items"></ol>
+    <div class="finish">
+      <button class="btn primary" id="complete">Mark trajectory complete</button>
+      <span id="savestate"></span>
+    </div>
+    <div class="finish">
+      <button class="btn" id="export">Download grades (.json)</button>
+      <label class="btn" for="importfile">Load grades file</label>
+      <input type="file" id="importfile" accept="application/json" hidden>
+    </div>
+  </section>
+</div>
+
+<script>
+const state = { manifest: [], traj: null, idx: 0, step: 1, grades: { annotator: "", items: {}, completed: {} }, selected: 0, docRef: null };
+const $ = (id) => document.getElementById(id);
+let writeChain = Promise.resolve();
+
+function banner(msg) { const b = $("banner"); b.textContent = msg; b.hidden = !msg; }
+
+async function loadJSON(path) { const r = await fetch(path); if (!r.ok) throw new Error(path + " " + r.status); return r.json(); }
+
+function itemGrade(id) { return (state.grades.items || {})[id] || {}; }
+
+function renderList() {
+  const box = $("trajlist"); box.textContent = "";
+  state.manifest.forEach((t, i) => {
+    const graded = t.items.filter((id) => itemGrade(id).v).length;
+    const done = (state.grades.completed || {})[t.id];
+    const b = document.createElement("button");
+    b.setAttribute("aria-current", i === state.idx ? "true" : "false");
+    const name = document.createElement("span"); name.textContent = t.id;
+    const pill = document.createElement("span");
+    pill.className = "pill" + (done ? " done" : graded ? " part" : "");
+    pill.textContent = done ? "done" : graded + "/" + t.items.length;
+    b.append(name, pill);
+    b.addEventListener("click", () => openTraj(i));
+    box.append(b);
+  });
+  const all = state.manifest.reduce((a, t) => a + t.items.length, 0);
+  const got = state.manifest.reduce((a, t) => a + t.items.filter((id) => itemGrade(id).v).length, 0);
+  const comp = Object.keys(state.grades.completed || {}).length;
+  $("progress").textContent = got + "/" + all + " items · " + comp + "/" + state.manifest.length + " trajectories";
+}
+
+function renderStep() {
+  const t = state.traj; if (!t) return;
+  const s = t.steps[state.step - 1] || {};
+  $("stephdr").textContent = "Step " + state.step + " of " + t.steps.length;
+  $("stepno").textContent = state.step + "/" + t.steps.length;
+  $("slider").max = t.steps.length; $("slider").value = state.step;
+  const img = $("shot");
+  if (s.img) { img.src = s.img; img.hidden = false; } else { img.hidden = true; }
+  $("action").textContent = s.action || "(no action)";
+  $("resp").textContent = s.response || "—";
+  $("prev").disabled = state.step <= 1; $("next").disabled = state.step >= t.steps.length;
+}
+
+function renderItems() {
+  const t = state.traj; const ol = $("items"); ol.textContent = "";
+  if (!t) return;
+  t.rubric.forEach((r, i) => {
+    const g = itemGrade(r.item_id);
+    const li = document.createElement("li"); li.className = "item"; li.dataset.v = g.v || "";
+    li.tabIndex = 0; li.addEventListener("focus", () => { state.selected = i; });
+    const p = document.createElement("p"); p.className = "crit"; p.textContent = (i + 1) + ". " + r.criterion;
+    const ch = document.createElement("div"); ch.className = "choices";
+    ["pass", "fail"].forEach((v) => {
+      const b = document.createElement("button");
+      b.className = v + (g.v === v ? " on" : ""); b.textContent = v === "pass" ? "Pass" : "Fail";
+      b.addEventListener("click", () => { state.selected = i; grade(r.item_id, { v }); });
+      ch.append(b);
+    });
+    const ta = document.createElement("textarea"); ta.id = "note-" + r.item_id; ta.placeholder = "Note (optional, for ambiguous evidence)";
+    ta.value = g.note || "";
+    ta.addEventListener("change", () => grade(r.item_id, { note: ta.value }));
+    li.append(p, ch, ta); ol.append(li);
+  });
+  $("final").textContent = t.final_answer || "—";
+  const done = (state.grades.completed || {})[t.id];
+  $("complete").textContent = done ? "Completed ✓ (click to reopen)" : "Mark trajectory complete";
+}
+
+function storeKey() { return "grades:" + (state.grades.annotator || "_"); }
+function deepMerge(a, b) { for (const k in b) { if (b[k] && typeof b[k] === "object" && !Array.isArray(b[k])) { a[k] = deepMerge(a[k] || {}, b[k]); } else a[k] = b[k]; } return a; }
+function write(patch) {
+  deepMerge(state.grades, JSON.parse(JSON.stringify(patch)));
+  try { localStorage.setItem(storeKey(), JSON.stringify(state.grades)); localStorage.setItem("grades:last", state.grades.annotator || "_"); $("savestate").textContent = "Saved in this browser · download your grades when done"; }
+  catch (e) { banner("This browser isn't keeping your grades. Use Download grades often."); }
+}
+
+function grade(itemId, patch) {
+  const cur = { ...(state.grades.items || {})[itemId], ...patch, t: Date.now() };
+  state.grades.items = { ...(state.grades.items || {}), [itemId]: cur };
+  write({ items: { [itemId]: cur } });
+  renderItems(); renderList();
+}
+
+async function openTraj(i) {
+  state.idx = i; state.step = 1; state.selected = 0;
+  const entry = state.manifest[i];
+  $("task").textContent = "Loading " + entry.id + "…";
+  try { state.traj = await loadJSON("traj/" + entry.id + ".json"); }
+  catch (e) { $("task").textContent = "Couldn't load " + entry.id + ". Reload the page to try again."; return; }
+  $("task").textContent = state.traj.instruction;
+  renderStep(); renderItems(); renderList();
+  try { localStorage.setItem("grader-last", String(i)); } catch (_) {}
+}
+
+$("prev").addEventListener("click", () => { if (state.step > 1) { state.step--; renderStep(); } });
+$("next").addEventListener("click", () => { if (state.traj && state.step < state.traj.steps.length) { state.step++; renderStep(); } });
+$("slider").addEventListener("input", (e) => { state.step = +e.target.value; renderStep(); });
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return;
+  if (e.key === "ArrowLeft") $("prev").click();
+  else if (e.key === "ArrowRight") $("next").click();
+  else if ((e.key === "p" || e.key === "f") && state.traj) {
+    const r = state.traj.rubric[state.selected]; if (r) grade(r.item_id, { v: e.key === "p" ? "pass" : "fail" });
+  }
+});
+$("complete").addEventListener("click", () => {
+  const t = state.traj; if (!t) return;
+  const missing = t.rubric.filter((r) => !itemGrade(r.item_id).v).length;
+  const done = (state.grades.completed || {})[t.id];
+  if (!done && missing) { banner("Grade all " + missing + " remaining item(s) before marking this trajectory complete."); return; }
+  banner("");
+  state.grades.completed = { ...(state.grades.completed || {}), [t.id]: !done };
+  write({ completed: { [t.id]: !done } });
+  renderItems(); renderList();
+  if (!done && state.idx < state.manifest.length - 1) openTraj(state.idx + 1);
+});
+$("annot").addEventListener("change", (e) => {
+  const code = e.target.value.trim();
+  if (!loadLocal(code)) state.grades = { annotator: code, items: state.grades.items || {}, completed: state.grades.completed || {} };
+  state.grades.annotator = code; write({ annotator: code }); banner(""); renderList(); renderItems();
+});
+
+function loadLocal(code) {
+  try { const raw = localStorage.getItem("grades:" + (code || "_")); if (raw) { const d = JSON.parse(raw); state.grades = { annotator: d.annotator || code || "", items: d.items || {}, completed: d.completed || {} }; return true; } } catch (_) {}
+  return false;
+}
+function connect() {
+  let code = ""; try { code = localStorage.getItem("grades:last") || ""; } catch (_) {}
+  if (code && code !== "_") { loadLocal(code); $("annot").value = state.grades.annotator; }
+  if (!state.grades.annotator) banner("Type your annotator code first (top right), then grade. Grades are kept in this browser; click Download grades when you finish and send the file.");
+  renderList(); renderItems();
+}
+$("export").addEventListener("click", () => {
+  if (!state.grades.annotator) { banner("Type your annotator code before downloading."); return; }
+  const blob = new Blob([JSON.stringify({ ...state.grades, exported: new Date().toISOString() }, null, 1)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "grades_" + state.grades.annotator + ".json";
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$("importfile").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const d = JSON.parse(await f.text()); state.grades = { annotator: d.annotator || "", items: d.items || {}, completed: d.completed || {} };
+        $("annot").value = state.grades.annotator; write({}); banner(""); renderList(); renderItems(); }
+  catch (_) { banner("That file isn't a grades file from this page."); }
+});
+
+(async function start() {
+  try { state.manifest = await loadJSON("manifest.json"); }
+  catch (e) { $("task").textContent = "Couldn't load the study manifest. Reload the page."; return; }
+  renderList();
+  let last = 0; try { last = +(localStorage.getItem("grader-last") || 0); } catch (_) {}
+  openTraj(Math.min(last, state.manifest.length - 1));
+  connect();
+})();
+</script>
+</body></html>
